@@ -10,11 +10,18 @@ import { homedir, platform } from 'os';
 import { globSync } from 'glob';
 import open from 'open';
 import { CaterpillarScanner, ScanResult, SecurityFinding } from '../core/src/index.js';
-import { createRequire } from 'module';
 
-const require = createRequire(import.meta.url);
-const pkg = require('../package.json');
-const VERSION = pkg.version;
+// Read version from package.json at build time for Node/tsup,
+// or use hardcoded fallback for Bun standalone binaries
+let VERSION = '1.0.10';
+try {
+  const { createRequire } = await import('module');
+  const require = createRequire(import.meta.url);
+  const pkg = require('../package.json');
+  VERSION = pkg.version;
+} catch {
+  // In standalone binary, package.json is not available
+}
 
 // Configuration
 const CONFIG_DIR = join(homedir(), '.caterpillar');
