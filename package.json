@@ -1,6 +1,6 @@
 {
   "name": "@alice-io/caterpillar",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Who are you? Security scanner for AI agent skills",
   "type": "module",
   "main": "dist/cli.js",
