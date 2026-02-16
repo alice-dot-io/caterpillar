@@ -1,4 +1,6 @@
-src/
+core/src/
+core/tests/
 tsconfig.json
-tsconfig.tsbuildinfo
-tsup.config.ts
+vitest.config.ts
+*.tsbuildinfo
+example_skills/
