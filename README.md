@@ -114,18 +114,55 @@ const response = await scanSingleSkill(skill, { mode: 'offline' });
 # Install dependencies
 npm install
 
-# Run locally (dev mode)
-npm run dev
+# Run in dev mode (no build step)
+npm run dev -- scan ./example_skills/
 
-# Build
+# Build the CLI binary
 npm run build
 
 # Run the built CLI
-node dist/cli.js scan ./my-skills/
+node dist/cli.js scan ./example_skills/
 
 # Run tests
 npm test
 ```
+
+## Architecture
+
+Caterpillar is split across two repositories:
+
+| Repo | Contents | Package |
+|------|----------|---------|
+| [alice-dot-io/caterpillar](https://github.com/alice-dot-io/caterpillar) _(this repo)_ | CLI client, pattern scanner, detection rules | `@alice-io/caterpillar` |
+| [ActiveFence/caterpillar](https://github.com/ActiveFence/caterpillar) | Server API, website, dashboard, authentication | _(not published)_ |
+
+### Scan modes and the server
+
+- **Offline** — built-in pattern matching, no network calls. All code is in this repo.
+- **OpenAI** — uses your own OpenAI API key for LLM analysis. All code is in this repo.
+- **Alice** — sends skills to the Caterpillar server API for full analysis. The server code lives in [ActiveFence/caterpillar](https://github.com/ActiveFence/caterpillar).
+
+If you're working on the "alice" scan mode or the `caterpillar login` flow, you need the server running locally:
+
+```bash
+# Terminal 1: Start the server (requires ActiveFence/caterpillar repo)
+cd /path/to/caterpillar-server
+npm install --legacy-peer-deps
+npm run dev                  # Starts Next.js on localhost:3000
+
+# Terminal 2: Run CLI against local server
+cd /path/to/caterpillar-cli
+npm run build
+CATERPILLAR_API_URL=http://localhost:3000 node dist/cli.js ask ./example_skills/safe-formatter/ --mode alice
+```
+
+### Running tests
+
+```bash
+npm test
+```
+
+Tests cover the CLI pattern scanner, rules, and MIME detection. Server tests live in the [ActiveFence/caterpillar](https://github.com/ActiveFence/caterpillar) repo.
 
 ## Links
 
