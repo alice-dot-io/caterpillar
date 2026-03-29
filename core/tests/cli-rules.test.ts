@@ -126,6 +126,17 @@ describe('networkAttackRules', () => {
     expect(testPattern(rule.pattern, 'nc -l 4444')).toBe(true);
     expect(testPattern(rule.pattern, 'reverse shell callback')).toBe(true);
     expect(testPattern(rule.pattern, 'netcat -e /bin/sh')).toBe(true);
+    expect(testPattern(rule.pattern, 'ncat -l 4444')).toBe(true);
+  });
+
+  it('should not flag "ncat" as a substring of legitimate words', () => {
+    const rule = networkAttackRules[0];
+    // "ncat" appears inside "truncate", "truncation", "concatenate" — these are
+    // common technical terms and must not trigger the reverse-shell detection.
+    expect(testPattern(rule.pattern, 'MOVE source longer than destination — truncation risk')).toBe(false);
+    expect(testPattern(rule.pattern, 'source code must be truncated to 50,000 characters')).toBe(false);
+    expect(testPattern(rule.pattern, 'STRING ... INTO OPC0003-ERR-DATA')).toBe(false);
+    expect(testPattern(rule.pattern, 'concatenate two fields before writing')).toBe(false);
   });
 });
 
