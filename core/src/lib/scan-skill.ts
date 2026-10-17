@@ -2,7 +2,7 @@ import { ArtifactMeta } from './collector';
 import { postScan, ArtifactRecord, ScanResponse } from './api-client';
 import { getApiKey, getVirusTotalApiKey, getOpenAIApiKey } from './config';
 import { checkVirusTotalBatch, VTResult } from './virustotal';
-import { runPatternScan } from './pattern-scanner';
+import { runPatternScan, scoreFindings } from './pattern-scanner';
 import { runLocalLLMJudge } from './llm-judge';
 import { printInfo, printWarning } from './display';
 import { Spinner, SCAN_MESSAGES, VT_MESSAGES } from './ui';
@@ -238,8 +238,12 @@ async function scanViaLocalAI(
       }
     }
 
-    const score = llmResult.score;
+    const findingScore = scoreFindings(mergedFindings);
+    const score = Math.min(llmResult.score, findingScore);
     const grade = scoreToGrade(score);
+    const summary = score < llmResult.score
+      ? `${llmResult.summary} Built-in finding severity deductions lowered the score from ${llmResult.score} to ${score}.`
+      : llmResult.summary;
 
     return {
       success: true,
@@ -248,7 +252,7 @@ async function scanViaLocalAI(
         grade,
         score,
         findings: mergedFindings,
-        summary: llmResult.summary,
+        summary,
         explanation: llmResult.explanation,
         risk_impact: llmResult.risk_impact,
         scanDuration,
@@ -283,12 +287,9 @@ async function scanViaPatterns(
     throw err;
   }
 
-  // Still run VT checks if key is available
-  const { binaryArtifacts, archiveArtifacts } = await runVirusTotalChecks(skill.artifacts, options);
-
   const scanDuration = Date.now() - startTime;
 
-  return buildPatternOnlyResponse(skill, patternResult, scanDuration, binaryArtifacts, archiveArtifacts);
+  return buildPatternOnlyResponse(skill, patternResult, scanDuration, [], []);
 }
 
 function buildPatternOnlyResponse(
@@ -323,7 +324,7 @@ function buildPatternOnlyResponse(
  * 2. Local AI (if user has openai_api_key)
  * 3. Offline patterns (no keys needed)
  *
- * All modes support client-side VirusTotal if virustotal_api_key is set.
+ * Server and local AI modes support client-side VirusTotal if a key is configured.
  */
 export async function scanSingleSkill(
   skill: SkillScanInput,
@@ -331,12 +332,17 @@ export async function scanSingleSkill(
 ): Promise<ScanResponse> {
   const mode = options.mode || detectScanMode();
 
+  let response: ScanResponse;
   switch (mode) {
     case 'alice':
-      return scanViaServer(skill, options);
+      response = await scanViaServer(skill, options);
+      break;
     case 'openai':
-      return scanViaLocalAI(skill, options);
+      response = await scanViaLocalAI(skill, options);
+      break;
     case 'offline':
-      return scanViaPatterns(skill, options);
+      response = await scanViaPatterns(skill, options);
+      break;
   }
+  return { ...response, contentCoverage: skill.contentCoverage };
 }

@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { runPatternScan, PatternFinding } from '@cli/lib/pattern-scanner';
+import { runPatternScan, PatternFinding, scoreFindings } from '@cli/lib/pattern-scanner';
 
 describe('runPatternScan', () => {
+  it('uses the same severity deductions for merged findings', () => {
+    expect(scoreFindings([{ severity: 'critical' }, { severity: 'high' }, { severity: 'medium' }])).toBe(47);
+    expect(scoreFindings([{ severity: 'info' }, { severity: 'unknown' }])).toBe(100);
+    expect(scoreFindings(Array.from({ length: 5 }, () => ({ severity: 'critical' })))).toBe(0);
+  });
+
   it('should return clean result for safe content', () => {
     const result = runPatternScan(
       '---\nname: safe-skill\n---\nThis skill helps you write code.',

@@ -38,6 +38,10 @@ export interface ArtifactRecord {
 
 export interface ScanResponse {
   success: boolean;
+  contentCoverage?: {
+    includedTextFiles: string[];
+    omittedTextFiles: Array<{ path: string; reason: string }>;
+  };
   data?: {
     skill: string;
     grade: string;

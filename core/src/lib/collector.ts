@@ -15,6 +15,10 @@ export interface CollectedSkill {
   skillContent: string;
   skillName: string;
   artifacts: ArtifactMeta[];
+  contentCoverage: {
+    includedTextFiles: string[];
+    omittedTextFiles: Array<{ path: string; reason: string }>;
+  };
 }
 
 const SKIP_DIRS = new Set([
@@ -137,31 +141,51 @@ function findMainFile(dir: string): string | null {
  * content string for the LLM judge to analyze. Each file is delimited with
  * a header showing the relative path so the judge can reference specific files.
  */
-function buildFullContent(skillDir: string, artifacts: ArtifactMeta[]): string {
+function buildFullContent(skillDir: string, artifacts: ArtifactMeta[], mainFile: string | null): {
+  content: string;
+  includedTextFiles: string[];
+  omittedTextFiles: Array<{ path: string; reason: string }>;
+} {
   const sections: string[] = [];
+  const includedTextFiles: string[] = [];
+  const omittedTextFiles: Array<{ path: string; reason: string }> = [];
   let totalBytes = 0;
 
-  for (const artifact of artifacts) {
-    if (artifact.size > MAX_FILE_BYTES) continue;
+  const mainRelativePath = mainFile ? relative(skillDir, mainFile) : null;
+  const orderedArtifacts = [...artifacts].sort((a, b) => {
+    if (a.path === mainRelativePath) return -1;
+    if (b.path === mainRelativePath) return 1;
+    return a.path.localeCompare(b.path);
+  });
+
+  for (const artifact of orderedArtifacts) {
     if (!isTextFile(artifact.path, artifact.mime)) continue;
+    if (artifact.size > MAX_FILE_BYTES) {
+      omittedTextFiles.push({ path: artifact.path, reason: `exceeds the ${MAX_FILE_BYTES}-byte per-file limit` });
+      continue;
+    }
 
     const fullPath = join(skillDir, artifact.path);
     try {
       const content = readFileSync(fullPath, 'utf-8');
 
       // Check if adding this file would exceed the limit
-      // Header + content + separators ~ content.length + path.length + 30
-      const sectionSize = content.length + artifact.path.length + 30;
-      if (totalBytes + sectionSize > MAX_CONTENT_BYTES) continue;
+      const section = `--- FILE: ${artifact.path} ---\n${content}`;
+      const sectionSize = Buffer.byteLength(section, 'utf-8') + Buffer.byteLength('\n\n', 'utf-8');
+      if (totalBytes + sectionSize > MAX_CONTENT_BYTES) {
+        omittedTextFiles.push({ path: artifact.path, reason: `would exceed the ${MAX_CONTENT_BYTES}-byte total content limit` });
+        continue;
+      }
 
-      sections.push(`--- FILE: ${artifact.path} ---\n${content}`);
+      sections.push(section);
+      includedTextFiles.push(artifact.path);
       totalBytes += sectionSize;
     } catch {
-      // Skip unreadable files
+      omittedTextFiles.push({ path: artifact.path, reason: 'could not be read' });
     }
   }
 
-  return sections.join('\n\n');
+  return { content: sections.join('\n\n'), includedTextFiles, omittedTextFiles };
 }
 
 export function collectSkill(inputPath: string): CollectedSkill {
@@ -190,14 +214,19 @@ export function collectSkill(inputPath: string): CollectedSkill {
   }
 
   // Build content from ALL text files in the directory
-  const fullContent = buildFullContent(skillDir, artifacts);
+  const collectedContent = buildFullContent(skillDir, artifacts, mainFile);
 
   // Fall back to just the main file if no text files were collected
   let skillContent: string;
-  if (fullContent.length > 0) {
-    skillContent = fullContent;
+  if (collectedContent.content.length > 0) {
+    skillContent = collectedContent.content;
   } else if (mainFile) {
     skillContent = readFileSync(mainFile, 'utf-8');
+    const mainRelativePath = relative(skillDir, mainFile);
+    if (!collectedContent.includedTextFiles.includes(mainRelativePath)) {
+      collectedContent.includedTextFiles.push(mainRelativePath);
+      collectedContent.omittedTextFiles = collectedContent.omittedTextFiles.filter(file => file.path !== mainRelativePath);
+    }
   } else {
     throw new Error(
       `No readable text files found in ${skillDir}.`
@@ -215,5 +244,9 @@ export function collectSkill(inputPath: string): CollectedSkill {
     skillContent,
     skillName,
     artifacts,
+    contentCoverage: {
+      includedTextFiles: collectedContent.includedTextFiles,
+      omittedTextFiles: collectedContent.omittedTextFiles,
+    },
   };
 }

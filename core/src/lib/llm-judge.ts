@@ -104,7 +104,7 @@ export async function runLocalLLMJudge(
 
   // Validate
   if (!Array.isArray(raw.findings)) raw.findings = [];
-  if (typeof raw.score !== 'number' || raw.score < 0 || raw.score > 100) raw.score = 50;
+  if (typeof raw.score !== 'number' || !Number.isFinite(raw.score) || raw.score < 0 || raw.score > 100) raw.score = 50;
   raw.summary = raw.summary || 'Analysis complete';
   raw.reasoning = raw.reasoning || '';
   raw.explanation = raw.explanation || '';

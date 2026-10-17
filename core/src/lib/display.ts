@@ -110,6 +110,14 @@ function printForensicsHint(forensics?: ScanResponse['forensics']): void {
   }
 }
 
+function printContentCoverageHint(coverage?: ScanResponse['contentCoverage']): void {
+  if (!coverage || coverage.omittedTextFiles.length === 0) return;
+  console.log(`${YELLOW}${prefix()}Some text files were omitted from analysis:${RESET}`);
+  for (const file of coverage.omittedTextFiles) {
+    console.log(`${YELLOW}${prefix()}${file.path}: ${file.reason}${RESET}`);
+  }
+}
+
 export function printScanResult(response: ScanResponse, filesScanned: number, mode?: string, verbose?: boolean): void {
   if (!response.success || !response.data) {
     const msg = response.error?.message || 'Unknown error';
@@ -118,7 +126,7 @@ export function printScanResult(response: ScanResponse, filesScanned: number, mo
     return;
   }
 
-  const { data, forensics } = response;
+  const { data, forensics, contentCoverage } = response;
 
   if (verbose) {
     // ── Full verbose output ──
@@ -146,6 +154,7 @@ export function printScanResult(response: ScanResponse, filesScanned: number, mo
     printFindingsVerbose(data.findings);
     printVirusTotalSection(data.binaryArtifacts, data.archiveArtifacts);
     printForensicsHint(forensics);
+    printContentCoverageHint(contentCoverage);
     console.log();
   } else {
     // ── Compact default output ──
@@ -160,6 +169,7 @@ export function printScanResult(response: ScanResponse, filesScanned: number, mo
 
     printFindingsCompact(data.findings);
     printVirusTotalCompact(data.binaryArtifacts, data.archiveArtifacts);
+    printContentCoverageHint(contentCoverage);
 
     if (data.findings.length > 0) {
       console.log(`\n  ${DIM}Run with ${RESET}--verbose${DIM} for full details${RESET}`);

@@ -17,6 +17,23 @@ export interface PatternScanResult {
   risk_impact: string;
 }
 
+const SEVERITY_DEDUCTIONS: Record<PatternFinding['severity'], number> = {
+  critical: 30,
+  high: 15,
+  medium: 8,
+  low: 3,
+  info: 0,
+};
+
+/** Apply the built-in scanner's severity deductions to any merged finding set. */
+export function scoreFindings(findings: Array<{ severity: string }>): number {
+  const deductions = findings.reduce((total, finding) => {
+    const deduction = SEVERITY_DEDUCTIONS[finding.severity as PatternFinding['severity']] || 0;
+    return total + deduction;
+  }, 0);
+  return Math.max(0, Math.min(100, 100 - deductions));
+}
+
 export function runPatternScan(content: string, skillName: string): PatternScanResult {
   const findings: PatternFinding[] = [];
   const seen = new Set<string>();
@@ -43,17 +60,7 @@ export function runPatternScan(content: string, skillName: string): PatternScanR
   const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
   findings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
-  // Calculate score
-  let score = 100;
-  for (const f of findings) {
-    switch (f.severity) {
-      case 'critical': score -= 30; break;
-      case 'high': score -= 15; break;
-      case 'medium': score -= 8; break;
-      case 'low': score -= 3; break;
-    }
-  }
-  score = Math.max(0, Math.min(100, score));
+  const score = scoreFindings(findings);
 
   // Build summary
   const critCount = findings.filter(f => f.severity === 'critical').length;

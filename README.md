@@ -131,6 +131,8 @@ node dist/cli.js scan ./example_skills/
 npm test
 ```
 
+See [security scanner research and contribution ideas](docs/CONTRIBUTING-SECURITY-RESEARCH.md) for related tools, research, and a proposed evaluation roadmap.
+
 ## Links
 
 [Website](https://caterpillar.alice.io) · [The Skills Report](https://caterpillar.alice.io/report) · Built by [Alice](https://alice.io)
