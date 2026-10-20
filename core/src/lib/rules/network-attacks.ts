@@ -2,7 +2,7 @@ import { PatternRule } from './types';
 
 export const networkAttackRules: PatternRule[] = [
   {
-    pattern: /reverse.*shell|bind.*shell|nc\s+-l|ncat|netcat.*-e/gi,
+    pattern: /reverse.*shell|bind.*shell|\bnc\s+-l|\bncat\b|\bnetcat\b.*-e/gi,
     severity: 'critical',
     category: 'Network Attacks',
     title: 'Reverse/bind shell pattern',

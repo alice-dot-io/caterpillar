@@ -73,7 +73,7 @@ npm test
 | Test File | Tests | Covers |
 |-----------|-------|--------|
 | `cli-pattern-scanner.test.ts` | 19 | Pattern scanner engine |
-| `cli-rules.test.ts` | 20 | Rule definitions across 8 categories |
+| `cli-rules.test.ts` | 21 | Rule definitions across 8 categories |
 | `cli-mime.test.ts` | 28 | MIME type detection |
 
 ## Submitting Changes

